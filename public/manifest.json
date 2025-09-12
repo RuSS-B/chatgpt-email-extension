@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Email Guard",
+  "version": "0.0.25",
+  "author": "russ.developer@gmail.com (Ruslan Balabanov)",
+  "description": "Alerts on emails in ChatGPT prompts and keeps a local history.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://chatgpt.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["vendor/browser-polyfill.min.js", "content.js"],
+      "css": [],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+}
