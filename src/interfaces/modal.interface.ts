@@ -1,1 +1,3 @@
-export type Modal = (issues: any[], continueCallback?: () => void) => void;
+import { Issue } from './issue.interface';
+
+export type Modal = (issues: Issue[], continueCallback?: () => void) => void;

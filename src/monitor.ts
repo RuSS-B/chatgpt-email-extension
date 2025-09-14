@@ -176,20 +176,6 @@ export class Monitor {
         '#composer-submit-button',
       ) as HTMLElement;
       submitButton?.click();
-
-      // const target = event.target as HTMLElement;
-      // if (event.type === 'submit') {
-      //   const form = target as HTMLFormElement;
-      //   form.submit();
-      // } else if (event.type === 'click') {
-      //   console.log(target);
-      //   target.click();
-      // } else if (event.type === 'keydown') {
-      //   const form = target.closest('form') as HTMLFormElement;
-      //   if (form) {
-      //     form.submit();
-      //   }
-      // }
     };
   }
 }

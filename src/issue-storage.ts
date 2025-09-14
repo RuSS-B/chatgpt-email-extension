@@ -63,8 +63,6 @@ export class IssueStorage {
   isAllWhitelisted(emails: string[]): boolean {
     console.log('Checking emails in the whitelist', emails);
 
-    console.log(emails.every((email) => this.isWhitelisted(email)));
-
     return emails.every((email) => this.isWhitelisted(email));
   }
 
@@ -76,13 +74,11 @@ export class IssueStorage {
     const expiration = this.whitelist.get(email);
 
     if (!expiration) {
-      console.debug(`Not found in the whitelist ${email}`);
       return false;
     }
 
     // Check if whitelist entry has expired
     if (Date.now() > expiration) {
-      console.debug(`Removing from the whitelist expired email ${email}`);
       this.whitelist.delete(email);
 
       return false;
