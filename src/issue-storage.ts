@@ -5,77 +5,112 @@ declare const browser: typeof globalThis & { storage: any };
 const MAX_CHARS = 300;
 
 export class IssueStorage {
+  private whitelist: Map<string, number> | undefined;
+
+  async loadWhitelist() {
+    this.whitelist = new Map(Object.entries(await IssueStorage.getWhitelist()));
+
+    console.log('White list loaded', Array.from(this.whitelist.entries()));
+  }
+
   async show(): Promise<Issue[]> {
     return (await browser.storage.local.get('issues')).issues || [];
+  }
+
+  async validate(emails: string[], text: string): Promise<Issue[]> {
+    const issues: Issue[] = [];
+    for (const email of emails) {
+      if (await this.isWhitelisted(email)) {
+        continue;
+      }
+
+      const issue = await this.add(email, text);
+      issues.push(issue);
+    }
+
+    return issues;
   }
 
   async setWhitelisted(emails: string[]) {
     console.log('Setting whitelisted', emails);
     const now = Date.now();
-    const expiration = now + (24 * 60 * 60 * 1000); // 24 hours from now
-    
-    const whitelist = await this.getWhitelist();
-    
-    // Add new emails to whitelist with expiration
-    emails.forEach(email => {
+    const expiration = now + 24 * 60 * 60 * 1000; // 24 hours from now
+
+    const whitelist = await IssueStorage.getWhitelist();
+
+    //Cleanup expired
+    Object.keys(whitelist).forEach((email) => {
+      const expiration = whitelist[email];
+
+      if (now > expiration) {
+        delete whitelist[email];
+      }
+    });
+
+    emails.forEach((email) => {
       whitelist[email] = expiration;
     });
-    
+
     await browser.storage.local.set({ whitelist });
+    await this.loadWhitelist();
   }
 
-  async getWhitelist(): Promise<Record<string, number>> {
+  static async getWhitelist(): Promise<Record<string, number>> {
     const result = await browser.storage.local.get('whitelist');
     return result.whitelist || {};
   }
 
-  async isWhitelisted(email: string): Promise<boolean> {
-    const whitelist = await this.getWhitelist();
-    const expiration = whitelist[email];
-    
+  isAllWhitelisted(emails: string[]): boolean {
+    console.log('Checking emails in the whitelist', emails);
+
+    console.log(emails.every((email) => this.isWhitelisted(email)));
+
+    return emails.every((email) => this.isWhitelisted(email));
+  }
+
+  isWhitelisted(email: string): boolean {
+    if (!this.whitelist) {
+      throw new Error('Whitelist is not defined!');
+    }
+
+    const expiration = this.whitelist.get(email);
+
     if (!expiration) {
+      console.debug(`Not found in the whitelist ${email}`);
       return false;
     }
-    
+
     // Check if whitelist entry has expired
     if (Date.now() > expiration) {
-      // Remove expired entry
-      delete whitelist[email];
-      await browser.storage.local.set({ whitelist });
+      console.debug(`Removing from the whitelist expired email ${email}`);
+      this.whitelist.delete(email);
+
       return false;
     }
-    
+
     return true;
   }
 
-  async filterNonWhitelistedEmails(emails: string[]): Promise<string[]> {
-    const nonWhitelisted: string[] = [];
-    
-    for (const email of emails) {
-      if (!(await this.isWhitelisted(email))) {
-        nonWhitelisted.push(email);
-      }
-    }
-    
-    return nonWhitelisted;
-  }
-
-  async add(emails: string[], fullText: string): Promise<Issue[]> {
-    const now = new Date().toISOString();
-
-    const issues = emails.map((email) => ({
-      email,
-      text: fullText.slice(0, MAX_CHARS),
-      ts: now,
-    }));
+  async add(email: string, text: string): Promise<Issue> {
+    const issue = this.toIssue(email, text);
 
     const history = await this.show();
-    await browser.storage.local.set({ issues: [...history, ...issues] });
+    await browser.storage.local.set({ issues: [...history, issue] });
 
-    return issues;
+    return issue;
   }
 
   async clear(): Promise<void> {
     await browser.storage.local.set({ issues: [] });
+  }
+
+  private toIssue(email: string, text: string): Issue {
+    const now = new Date().toISOString();
+
+    return {
+      email,
+      text: text.slice(0, MAX_CHARS),
+      ts: now,
+    };
   }
 }

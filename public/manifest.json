@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Email Guard",
-  "version": "0.0.25",
+  "version": "0.0.36",
   "author": "russ.developer@gmail.com (Ruslan Balabanov)",
   "description": "Alerts on emails in ChatGPT prompts and keeps a local history.",
   "permissions": ["storage"],

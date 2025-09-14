@@ -3,11 +3,10 @@ import { IssueStorage } from './issue-storage';
 import { Modal } from './interfaces';
 
 export class Monitor {
-  private issueStorage: IssueStorage;
-
-  constructor(private readonly modal: Modal) {
-    this.issueStorage = new IssueStorage();
-  }
+  constructor(
+    private readonly issueStorage: IssueStorage,
+    private readonly modal: Modal,
+  ) {}
 
   observe() {
     this.addOnSubmitHandler();
@@ -20,8 +19,8 @@ export class Monitor {
   private addOnSubmitHandler() {
     document.addEventListener(
       'submit',
-      async (event) => {
-        await this.interceptSubmit(event);
+      (event) => {
+        this.interceptSubmit(event);
       },
       true,
     );
@@ -30,7 +29,7 @@ export class Monitor {
   private addOnEnterHandler() {
     document.addEventListener(
       'keydown',
-      async (event) => {
+      (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
           const target = event.target as HTMLElement;
 
@@ -41,7 +40,7 @@ export class Monitor {
               '[contenteditable="true"][data-virtualkeyboard="true"]',
             )
           ) {
-            await this.interceptSubmit(event);
+            this.interceptSubmit(event);
           }
         }
       },
@@ -54,7 +53,7 @@ export class Monitor {
 
     document.addEventListener(
       'click',
-      async (event) => {
+      (event) => {
         const target: EventTarget | null = event.target;
 
         if (!target) {
@@ -65,7 +64,11 @@ export class Monitor {
 
         //max 5 elements deep
         for (let i = 0; i < maxElementDepth; i++) {
-          if (element.tagName === 'BUTTON' && element.closest('form')) {
+          if (
+            element &&
+            element.tagName === 'BUTTON' &&
+            element.closest('form')
+          ) {
             const buttonText = element.textContent?.toLowerCase() || '';
             const ariaLabel =
               element.getAttribute('aria-label')?.toLowerCase() || '';
@@ -78,10 +81,7 @@ export class Monitor {
               element.matches('[data-testid*="send"]') ||
               element.matches('[data-testid*="submit"]')
             ) {
-              const shouldBlock = await this.interceptSubmit(event);
-              if (shouldBlock === false) {
-                return false;
-              }
+              this.interceptSubmit(event);
               break;
             }
           }
@@ -121,7 +121,7 @@ export class Monitor {
     return '';
   }
 
-  private async interceptSubmit(event: Event) {
+  private interceptSubmit(event: Event) {
     const text = this.getPromptText();
 
     if (!text) {
@@ -133,48 +133,63 @@ export class Monitor {
       return;
     }
 
-    // Filter out whitelisted emails
-    const nonWhitelistedEmails =
-      await this.issueStorage.filterNonWhitelistedEmails(emails);
-    if (!nonWhitelistedEmails.length) {
-      console.log('All emails are whitelisted, allowing submission');
-      return; // Allow the submission to proceed
+    if (this.issueStorage.isAllWhitelisted(emails)) {
+      console.log('The email(s) is white listed');
+
+      return;
     }
 
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
 
-    this.issueStorage.add(nonWhitelistedEmails, text).then((issues) => {
-      this.modal(issues, this.getContinueCallback(event, nonWhitelistedEmails));
+    this.issueStorage.validate(emails, text).then((issues) => {
+      if (issues.length) {
+        this.modal(
+          issues,
+          this.getContinueCallback(
+            event,
+            issues.map(({ email }) => email),
+          ),
+        );
+      } else {
+        console.log('Lets go!');
+        return true;
+      }
     });
 
-    console.log('Got non-whitelisted emails detected:', nonWhitelistedEmails);
     return false;
   }
 
-  private getContinueCallback(event: Event, emails: string[]) {
+  private getContinueCallback(event: Event, emails?: string[]) {
     return async () => {
       console.log(
         'Continue anyway - whitelisting emails and re-dispatching event',
       );
 
-      // Whitelist the emails for 24 hours
-      await this.issueStorage.setWhitelisted(emails);
-      console.log('Emails whitelisted for 24 hours:', emails);
-
-      const target = event.target as HTMLElement;
-      if (event.type === 'submit') {
-        const form = target as HTMLFormElement;
-        form.submit();
-      } else if (event.type === 'click') {
-        target.click();
-      } else if (event.type === 'keydown') {
-        const form = target.closest('form') as HTMLFormElement;
-        if (form) {
-          form.submit();
-        }
+      if (emails) {
+        await this.issueStorage.setWhitelisted(emails);
+        console.log('Emails whitelisted for 24 hours:', emails);
       }
+
+      const submitButton = document.querySelector(
+        '#composer-submit-button',
+      ) as HTMLElement;
+      submitButton?.click();
+
+      // const target = event.target as HTMLElement;
+      // if (event.type === 'submit') {
+      //   const form = target as HTMLFormElement;
+      //   form.submit();
+      // } else if (event.type === 'click') {
+      //   console.log(target);
+      //   target.click();
+      // } else if (event.type === 'keydown') {
+      //   const form = target.closest('form') as HTMLFormElement;
+      //   if (form) {
+      //     form.submit();
+      //   }
+      // }
     };
   }
 }

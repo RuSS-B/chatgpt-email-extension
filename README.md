@@ -33,7 +33,6 @@ A browser extension that alerts on emails in ChatGPT prompts and keeps a local h
 
 ## Development
 
-- `npm run dev` - Start development server
 - `npm run build` - Build for production
 
 ## Permissions
@@ -43,7 +42,7 @@ A browser extension that alerts on emails in ChatGPT prompts and keeps a local h
 
 ## Version
 
-Current version: 0.0.25
+Current version: 0.0.36
 
 ## Author
 

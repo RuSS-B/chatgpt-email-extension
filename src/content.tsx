@@ -5,6 +5,7 @@ import { Monitor } from './monitor';
 import { extUrl } from './utils/ext-url';
 import { Issue } from './interfaces';
 import { getGlobalModalBridge } from './contexts/ModalContext';
+import { IssueStorage } from './issue-storage';
 
 function ensureMount(): void {
   const id = '__ceg_mount__';
@@ -45,5 +46,10 @@ const showModal = (issues: Issue[], continueCallback?: () => void) => {
   }
 };
 
-const monitor = new Monitor(showModal);
-monitor.observe();
+(async () => {
+  const issueStorage = new IssueStorage();
+  await issueStorage.loadWhitelist();
+
+  const monitor = new Monitor(issueStorage, showModal);
+  monitor.observe();
+})();
